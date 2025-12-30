@@ -9,6 +9,18 @@ export class FPSCameraManager extends CameraManager {
   euler = new THREE.Euler(0, 0, 0, "YXZ");
   constructor(player, camera) {
     super(player, camera);
+    
+    // Flashlight
+    const spotLight = new THREE.SpotLight(0xffffff, 50); // Reduced intensity to 50
+    spotLight.angle = Math.PI / 6;
+    spotLight.penumbra = 0.5;
+    spotLight.decay = 0; // Set decay to 0 for infinite reach (or low value for long reach)
+    spotLight.distance = 200; // Increased distance
+    spotLight.castShadow = true;
+    
+    this.camera.add(spotLight);
+    this.camera.add(spotLight.target);
+    spotLight.target.position.set(0, 0, -100); // Target further away in front of camera
   }
   showDebug() {
     const helper = new THREE.CameraHelper(this.camera);
@@ -22,6 +34,23 @@ export class FPSCameraManager extends CameraManager {
       this.player.position.z
     );
     this.player.lookingDirection = this.getDirection();
+    
+    // Recoil recovery - gradually return to neutral position
+    if (this.recoilAccumulation.length() > 0.001) {
+      this.euler.setFromQuaternion(this.camera.quaternion);
+      
+      // Calculate target neutral rotation based on current mouse look + recovery
+      const recoveryAmount = this.recoilRecoverySpeed * dt;
+      this.recoilAccumulation.multiplyScalar(Math.max(0, 1 - recoveryAmount));
+      
+      // Apply the remaining recoil to the current euler angles
+      this.euler.x = this.neutralEuler.x + this.recoilAccumulation.x;
+      this.euler.y = this.neutralEuler.y + this.recoilAccumulation.y;
+      this.euler.z = 0;
+      
+      this.camera.quaternion.setFromEuler(this.euler);
+    }
+    
     if (this.player.canResetRecoil() && this.recoilIndex > 1) {
       this.recoilIndex--;
     }
@@ -30,13 +59,20 @@ export class FPSCameraManager extends CameraManager {
     super.onMouseMove(event);
     var movementX = event.movementX || event.mozMovementX || event.webkitMovementX || 0;
     var movementY = event.movementY || event.mozMovementY || event.webkitMovementY || 0;
-    this.euler.setFromQuaternion(this.camera.quaternion);
-    this.euler.y -= movementX * 15e-4;
-    this.euler.x -= movementY * 15e-4;
-    this.euler.x = Math.max(
+    
+    // Update neutral position based on mouse movement
+    this.neutralEuler.y -= movementX * 15e-4;
+    this.neutralEuler.x -= movementY * 15e-4;
+    this.neutralEuler.x = Math.max(
       PI_2 - maxPolarAngle,
-      Math.min(PI_2 - minPolarAngle, this.euler.x)
+      Math.min(PI_2 - minPolarAngle, this.neutralEuler.x)
     );
+    
+    // Apply mouse movement + current recoil
+    this.euler.setFromQuaternion(this.camera.quaternion);
+    this.euler.x = this.neutralEuler.x + this.recoilAccumulation.x;
+    this.euler.y = this.neutralEuler.y + this.recoilAccumulation.y;
+    this.euler.z = 0;
     this.camera.quaternion.setFromEuler(this.euler);
   }
   getObject() {
@@ -49,6 +85,8 @@ export class FPSCameraManager extends CameraManager {
   yawDirection = -1;
   recoilIndex = 1;
   recoilAccumulation = Vector3D.ZERO();
+  neutralEuler = new THREE.Euler(0, 0, 0, "YXZ");
+  recoilRecoverySpeed = 2.0;
   // f\left(x\right)=cx\exp\left(1-cx\right)
   //https://www.desmos.com/calculator/l9wr4aamzc?lang=fr
   createRecoil() {
@@ -66,8 +104,14 @@ export class FPSCameraManager extends CameraManager {
     const yaw = yawDampingFunction(this.recoilIndex) / 50 * this.yawDirection;
     const recoil = new Vector3D(pitch, yaw, 0);
     this.recoilAccumulation.add(recoil);
-    this.camera.rotateX(recoil.x);
-    this.camera.rotateY(recoil.y);
+    // Apply recoil using euler angles to prevent roll accumulation
+    this.euler.setFromQuaternion(this.camera.quaternion);
+    this.euler.x = this.neutralEuler.x + this.recoilAccumulation.x;
+    this.euler.y = this.neutralEuler.y + this.recoilAccumulation.y;
+    // Explicitly keep z rotation at 0 to prevent roll
+    this.euler.z = 0;
+    this.camera.quaternion.setFromEuler(this.euler);
+    
     this.recoilIndex++;
   }
 }

@@ -42,11 +42,11 @@ export class GlobalLoadingManager extends THREE.LoadingManager {
     }
     return GlobalLoadingManager.instance;
   }
-  async loadAllMeshs() {
+  async loadAllMeshs(mapName) {
     const tpsmesh = new ThirdPersonMesh();
     await tpsmesh.load();
     tpsmesh.register(this.loadableMeshs);
-    const mapmesh = new MapMesh();
+    const mapmesh = new MapMesh(mapName);
     await mapmesh.load();
     mapmesh.register(this.loadableMeshs);
     const ak = new FPSMesh("./assets/fps_mine_sketch_galil.glb", "AK47");
@@ -61,6 +61,7 @@ export class GlobalLoadingManager extends THREE.LoadingManager {
     const bullet = new LoadableMesh("./assets/9mm2douille.glb", "Bullet");
     await bullet.load();
     bullet.register(this.loadableMeshs);
+    
     document.getElementById("loading")?.remove();
   }
   static async loadJson(path) {

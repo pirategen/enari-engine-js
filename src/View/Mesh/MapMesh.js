@@ -5,8 +5,9 @@ import { TrimeshRenderer } from "../../View/Renderer/TrimeshRenderer.js";
 import { FakeSpotLight } from "../../View/Mesh/FakeSpotLight.js";
 import { LoadableMesh } from "../../View/Mesh/LoadableMesh.js";
 export class MapMesh extends LoadableMesh {
-  constructor() {
-    super(`./assets/collision-world.glb`, "Map");
+  constructor(mapName = "de_dust_new") {
+    super(`./assets/${mapName}.glb`, "Map");
+    this.mapName = mapName;
   }
   init() {
     super.init();
@@ -84,7 +85,7 @@ export class MapMesh extends LoadableMesh {
     }
   } */
   clone() {
-    const loadableMesh = new MapMesh();
+    const loadableMesh = new MapMesh(this.mapName);
     loadableMesh.setMesh(this.cloneMesh());
     return loadableMesh;
   }

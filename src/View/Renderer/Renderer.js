@@ -12,6 +12,7 @@ import { SAOPass } from "three/addons/postprocessing/SAOPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { Pass, FullScreenQuad } from "three/addons/postprocessing/Pass.js";
 import { LensDistortionPassGen } from "../../../libs/three-lens-distortion/LensDistortionPassGen.js";
+import { DecalManager } from "./DecalManager.js";
 export class Renderer extends THREE.WebGLRenderer {
   scene;
   fps;
@@ -27,6 +28,7 @@ export class Renderer extends THREE.WebGLRenderer {
   debugCameraPosition;
   sky;
   sceneLighting;
+  decalManager;
   constructor(players) {
     super({ antialias: false });
     this.autoClear = false;
@@ -35,8 +37,10 @@ export class Renderer extends THREE.WebGLRenderer {
     this.scene = new THREE.Scene();
     this.viewmodelRenderer = new ViewmodelRenderer();
     this.particleManager = new ParticleManager(this.scene);
+    this.decalManager = new DecalManager(this.scene);
     this.debugUI = new DebugUI();
     this.debugUI.addMonitor(this.info.render, "calls");
+    this.debugUI.element.style.display = 'none';
     this.setSize(window.innerWidth, window.innerHeight);
     this.setRenderingConfig();
     this.onWindowResize = this.onWindowResize.bind(this);
@@ -112,14 +116,14 @@ export class Renderer extends THREE.WebGLRenderer {
     ssaoFolder.addInput(ssaoPass, "maxDistance", { min: 0.01, max: 0.3 });
     this.composer.addPass(ssaoPass);
     const lensDistortionFolder = postProcessFolder.addFolder({ title: "Lens Distortion" });
-    const LensDistortionPass = new LensDistortionPassGen({ THREE, Pass, FullScreenQuad });
+    //const LensDistortionPass = new LensDistortionPassGen({ THREE, Pass, FullScreenQuad });
     const params = {
       distortion: new THREE.Vector2(0.24, 0.24),
       principalPoint: new THREE.Vector2(0, 0),
       focalLength: new THREE.Vector2(0.64, 0.64),
       skew: 0
     };
-    const lensDistortionPass = new LensDistortionPass(params);
+    //const lensDistortionPass = new LensDistortionPass(params);
     lensDistortionFolder.addInput(params, "distortion", {
       x: { min: -1, max: 1 },
       y: { min: -1, max: 1, inverted: true }
@@ -133,8 +137,8 @@ export class Renderer extends THREE.WebGLRenderer {
       y: { min: -1, max: 1, inverted: true }
     });
     lensDistortionFolder.addInput(params, "skew", { min: -Math.PI / 2, max: Math.PI / 2 });
-    this.debugUI.on("change", () => lensDistortionPass.skew = params.skew);
-    this.composer.addPass(lensDistortionPass);
+    //this.debugUI.on("change", () => lensDistortionPass.skew = params.skew);
+    //this.composer.addPass(lensDistortionPass);
   }
   setSkybox() {
     const loader = new THREE.TextureLoader();
@@ -250,5 +254,19 @@ export class Renderer extends THREE.WebGLRenderer {
       this.debugCamera.lookAt(this.currentPlayer.player.position);
       this.render(this.scene, this.debugCamera);
     }
+    
+    this.updateAmmoUI();
+  }
+  
+  updateAmmoUI() {
+      const weapon = this.currentPlayer.player.currentWeapon;
+      const el = document.getElementById('ammo-counter');
+      if (el && weapon) {
+          if (weapon.isMelee) {
+              el.innerText = "";
+          } else {
+              el.innerText = `${weapon.clipAmmo} / ${weapon.totalAmmo}`;
+          }
+      }
   }
 }

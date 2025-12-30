@@ -26,6 +26,9 @@ export class Physics {
   add(body) {
     this.world.addRigidBody(body);
   }
+  remove(body) {
+    this.world.removeRigidBody(body);
+  }
   update(dt) {
     this.world.stepSimulation(dt);
   }

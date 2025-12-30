@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { Vector3D } from "../../../Core/Vector.js";
 import { Game } from "../../../Game.js";
+
 export class PlayerRenderer {
   playerCameraManager;
   camera;
@@ -11,6 +12,7 @@ export class PlayerRenderer {
   showDebug = false;
   showDebugHitscan = false;
   baseFov = 90;
+  
   setCameraManager(cameraManager) {
     this.playerCameraManager = cameraManager;
   }
@@ -25,6 +27,7 @@ export class PlayerRenderer {
     this.camera = PlayerRenderer.createDefaultCamera();
     this.player = player;
     this.game = Game.getInstance();
+    
     if (this.showDebug) {
       this.createDebugMeshs();
       const debugUI = this.game.renderer.debugUI;
@@ -103,7 +106,59 @@ export class PlayerRenderer {
       this.updateDebugMeshs();
     }
   }
+  
+  raycaster = new THREE.Raycaster();
+  
   handleShoot(hitscanResult) {
+    // Always perform visual raycast for decals
+    this.raycaster.setFromCamera(new THREE.Vector2(0, 0), this.camera);
+    
+    // Filter out player's own objects and viewmodel
+    const scene = this.game.renderer.scene;
+    const intersects = this.raycaster.intersectObjects(scene.children, true);
+    
+    // Find the first valid intersection that isn't a particle or helper
+    let hit = null;
+    for (let i = 0; i < intersects.length; i++) {
+        const object = intersects[i].object;
+        if (object.visible && object.type === 'Mesh' && object.name !== 'Sky' && !object.userData.isParticle) {
+            hit = intersects[i];
+            break;
+        }
+    }
+
+    if (hit) {
+        // Only create decals for non-melee weapons
+        const weapon = hitscanResult.weapon;
+        if (weapon && !weapon.isMelee) {
+            // Check if hit object is a player (SkinnedMesh) or part of a player
+            let isPlayer = false;
+            let currentObj = hit.object;
+            while(currentObj) {
+                if (currentObj instanceof THREE.SkinnedMesh || (currentObj.userData && currentObj.userData.isPlayer)) {
+                    isPlayer = true;
+                    break;
+                }
+                currentObj = currentObj.parent;
+            }
+
+            if (!isPlayer) {
+                // Add decal at hit position
+                const position = hit.point;
+                // In some cases face can be null (e.g. Points), though we check for Mesh
+                const normal = hit.face ? hit.face.normal.clone() : new THREE.Vector3(0, 1, 0);
+                
+                // Transform normal to world space
+                normal.transformDirection(hit.object.matrixWorld);
+                
+                // Add a slight offset to position to prevent z-fighting (though decal material handles this too)
+                position.add(normal.clone().multiplyScalar(0.01));
+
+                this.game.renderer.decalManager.createDecal(position, normal, hit.object);
+            }
+        }
+    }
+
     if (this.showDebugHitscan) {
       this.createHitscanLine();
       if (hitscanResult.hasHit) {

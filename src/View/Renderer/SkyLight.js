@@ -6,24 +6,29 @@ export class SkyLight extends THREE.Object3D {
   sunPosition = Vector3D.ZERO();
   directionalLight;
   hemiLight;
+  ambientLight;
   renderer;
   sky;
   constructor(renderer) {
     super();
     this.renderer = renderer;
-    const ambientLight = new THREE.AmbientLight();
-    ambientLight.intensity = 0.78;
-    this.renderer.addToRenderer(ambientLight);
-    this.hemiLight = new THREE.HemisphereLight(16777215, 16777215, 1);
-    this.hemiLight.color.setHSL(0.59, 0.4, 0.6);
-    this.hemiLight.groundColor.setHSL(0.095, 0.2, 0.75);
+    this.ambientLight = new THREE.AmbientLight();
+    // Increased intensity for debugging (was 0.05)
+    this.ambientLight.intensity = 1.5;
+    this.renderer.addToRenderer(this.ambientLight);
+    this.hemiLight = new THREE.HemisphereLight(16777215, 16777215, 1.5); // Increased from 0.05
+    this.hemiLight.color.setHSL(0, 0, 1);
+    this.hemiLight.groundColor.setHSL(0.1, 0.25, 0.85);
     this.renderer.addToRenderer(this.hemiLight);
     const lightInput = this.renderer.debugUI.addInput(this.hemiLight, "intensity", {
       min: 0,
       max: 10
     });
     this.renderer.debugUI.lightFolder.add(lightInput);
-    this.directionalLight = new THREE.DirectionalLight(16689902, 6.2);
+    
+    // Sun removed for flashlight mode
+    /*
+    this.directionalLight = new THREE.DirectionalLight(16777215, 6.2);
     this.directionalLight.shadow.camera.near = 0.1;
     this.directionalLight.shadow.camera.far = 500;
     this.directionalLight.shadow.camera.right = 150;
@@ -43,6 +48,8 @@ export class SkyLight extends THREE.Object3D {
     this.renderer.debugUI.lightFolder.add(dirLight);
     this.renderer.addToRenderer(this.directionalLight);
     this.renderer.addToRenderer(this.directionalLight.target);
+    */
+    
     this.lightUpdater = new PeriodicUpdater(
       1e3,
       () => {
@@ -113,14 +120,36 @@ export class SkyLight extends THREE.Object3D {
     }).on("change", guiChanged);
     guiChanged();
   }
+  
+  updateLightingForMap(mapName) {
+    // Set map-specific lighting values - Overridden for dark flashlight mode
+    // Increased for debugging
+    this.ambientLight.intensity = 1.5;
+    /*
+    if (mapName === "de_dust2_new") {
+      this.ambientLight.intensity = 1.52;
+      this.directionalLight.intensity = 6.30;
+    } else if (mapName === "de_train") {
+      this.ambientLight.intensity = 9.35;
+      this.directionalLight.intensity = 4.67;
+    } else {
+      // Default values for other maps
+      this.ambientLight.intensity = 1.52;
+      this.directionalLight.intensity = 6.2;
+    }
+    */
+  }
+  
   lightUpdater;
   lightUpdate() {
-    this.directionalLight.shadow.needsUpdate = true;
-    this.position.copy(this.renderer.camera.position);
-    const pos = this.renderer.camera.position.clone();
-    this.directionalLight.position.set(pos.x, pos.y + 100, pos.z);
-    this.directionalLight.position.add(new Vector3D(-40, 0, -40));
-    this.directionalLight.target.position.set(pos.x, pos.y, pos.z);
+    if (this.directionalLight) {
+        this.directionalLight.shadow.needsUpdate = true;
+        this.position.copy(this.renderer.camera.position);
+        const pos = this.renderer.camera.position.clone();
+        this.directionalLight.position.set(pos.x, pos.y + 100, pos.z);
+        this.directionalLight.position.add(new Vector3D(-40, 0, -40));
+        this.directionalLight.target.position.set(pos.x, pos.y, pos.z);
+    }
   }
   update(dt) {
     this.lightUpdater.update(dt);

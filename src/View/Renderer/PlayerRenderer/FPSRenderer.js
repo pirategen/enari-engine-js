@@ -40,7 +40,9 @@ export class FPSRenderer extends PlayerRenderer {
   handleJump() {
   }
   removeMesh() {
-    this.viewmodelCamera.children = [];
+    if (this.fpsMesh && this.fpsMesh.mesh) {
+        this.viewmodelCamera.remove(this.fpsMesh.mesh);
+    }
   }
   show() {
     this.fpsMesh.mesh.visible = true;
@@ -60,7 +62,7 @@ export class FPSRenderer extends PlayerRenderer {
   legacyViewmodel = true;
   fpsMesh;
   recoilEffect = 0;
-  bobbingAmount = 8e-4;
+  bobbingAmount = 4e-4;
   bobbingRestitutionSpeed = 15;
   moveEffect = Vector3D.ZERO();
   tempEmitter;
@@ -172,7 +174,7 @@ export class FPSRenderer extends PlayerRenderer {
     this.moveEffect = new Vector3D(moveVector.x, this.moveEffect.y + 16 * dt, moveVector.z);
     this.acc += this.shakeFrequency * dt;
     const noise = this.noiseGenerator.noise();
-    this.shakeStrength = noise * 2e-3;
+    this.shakeStrength = noise * 1e-3;
     this.camera.rotation.x += Math.cos(this.acc) * this.shakeStrength;
     this.camera.rotation.y += Math.sin(this.acc) * this.shakeStrength;
   }

@@ -16,21 +16,13 @@ export class SceneLighting {
       view: "list",
       label: "ToneMapping",
       options: [
-        { text: "None", value: THREE.NoToneMapping },
-        { text: "Linear", value: THREE.LinearToneMapping },
-        { text: "Reinhard", value: THREE.ReinhardToneMapping },
         { text: "Cineon", value: THREE.CineonToneMapping }
       ]
     });
     this.renderer.toneMappingExposure = 1.1;
     this.renderer.setClearColor(13421772);
-    this.shadowUpdater = new PeriodicUpdater(
-      1e3,
-      () => {
-        this.renderer.shadowMap.needsUpdate = true;
-      },
-      this
-    );
+    // Shadow updater removed - shadows now update every frame in update()
+    
     this.enableShadow(this.renderer.renderingConfig.hasShadow);
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -47,11 +39,13 @@ export class SceneLighting {
     this.renderer.debugUI.addInput(this.renderer, "toneMappingExposure");
     this.sky = new SkyLight(renderer);
     this.applyRenderingConfig();
+    /*
     for (let i = 0; i < 1; i++) {
       const p = new THREE.SpotLight(16777215, 3);
       p.position.copy(new Vector3D(0, 0, 0));
       this.renderer.addToRenderer(p);
     }
+    */
   }
   applyRenderingConfig() {
     if (this.renderer.renderingConfig.hasParticle) {
@@ -85,7 +79,7 @@ export class SceneLighting {
     }
     if (this.renderer.renderingConfig.hasLight) {
       if (this.renderer.renderingConfig.hasShadow) {
-        this.shadowUpdater.update(dt);
+        this.renderer.shadowMap.needsUpdate = true;
       }
     }
   }

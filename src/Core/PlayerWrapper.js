@@ -24,7 +24,8 @@ export class PlayerWrapper {
     this.renderer = renderer;
     if (renderer instanceof FPSRenderer) {
       this.fpsRenderer = renderer;
-    } else {
+    }
+    if (renderer instanceof ThirdPersonRenderer) {
       this.tpsRenderer = renderer;
     }
   }
@@ -42,7 +43,7 @@ export class PlayerWrapper {
     }
     const cameraManager = new FPSCameraManager(this.player, this.renderer.camera);
     this.renderer.setCameraManager(cameraManager);
-    this.renderer.onEnabled(this.tpsRenderer ? this.tpsRenderer.camera : void 0);
+    this.renderer.onEnabled();
     return true;
   }
   switchToTpsView() {
@@ -50,7 +51,7 @@ export class PlayerWrapper {
       console.log("Already in tps view!");
       return false;
     }
-    this.renderer?.onDisabled();
+    this.renderer.onDisabled();
     if (this.tpsRenderer) {
       this.setRenderer(this.tpsRenderer);
     } else {
@@ -59,7 +60,7 @@ export class PlayerWrapper {
     }
     const cameraManager = new TPSCameraManager(this.player, this.renderer.camera);
     this.renderer.setCameraManager(cameraManager);
-    this.renderer.onEnabled(this.fpsRenderer ? this.fpsRenderer.camera : void 0);
+    this.renderer.onEnabled();
     return true;
   }
   static default() {

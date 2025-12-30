@@ -29,6 +29,99 @@
                 color: white;
             }
 
+            .custom-dropdown {
+                position: absolute;
+                top: 10px;
+                right: 10px;
+                z-index: 10;
+                min-width: 120px;
+            }
+
+            .dropdown-selected {
+                background: rgba(0, 0, 0, 0.85);
+                border: 1px solid #00ff00;
+                color: #00ff00;
+                font-family: "Courier New", "Monaco", "Lucida Console", monospace;
+                font-size: 10px;
+                padding: 6px 10px;
+                cursor: pointer;
+                box-shadow: 0 0 5px rgba(0, 255, 0, 0.3), inset 0 0 5px rgba(0, 255, 0, 0.1);
+                text-shadow: 0 0 3px rgba(0, 255, 0, 0.5);
+                transition: all 0.2s ease;
+                user-select: none;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+
+            .dropdown-selected:hover {
+                background: rgba(0, 0, 0, 0.9);
+                box-shadow: 0 0 8px rgba(0, 255, 0, 0.5), inset 0 0 8px rgba(0, 255, 0, 0.2);
+                text-shadow: 0 0 5px rgba(0, 255, 0, 0.8);
+            }
+
+            .dropdown-arrow {
+                font-size: 10px;
+                transition: transform 0.2s ease;
+            }
+
+            .dropdown-options {
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: rgba(0, 0, 0, 0.95);
+                border: 1px solid #00ff00;
+                border-top: none;
+                max-height: 200px;
+                overflow-y: auto;
+                opacity: 0;
+                visibility: hidden;
+                transform: translateY(-10px);
+                transition: all 0.2s ease;
+                box-shadow: 0 0 10px rgba(0, 255, 0, 0.4);
+            }
+
+            .dropdown-options.show {
+                opacity: 1;
+                visibility: visible;
+                transform: translateY(0);
+            }
+
+            .dropdown-option {
+                padding: 6px 10px;
+                color: #00ff00;
+                font-family: "Courier New", "Monaco", "Lucida Console", monospace;
+                font-size: 10px;
+                cursor: pointer;
+                border-bottom: 1px solid rgba(0, 255, 0, 0.2);
+                text-shadow: 0 0 2px rgba(0, 255, 0, 0.4);
+                transition: all 0.2s ease;
+                user-select: none;
+            }
+
+            .dropdown-option:hover {
+                background: rgba(0, 255, 0, 0.1);
+                text-shadow: 0 0 4px rgba(0, 255, 0, 0.8);
+                box-shadow: inset 0 0 5px rgba(0, 255, 0, 0.2);
+            }
+
+            .dropdown-option:last-child {
+                border-bottom: none;
+            }
+
+            #ammo-counter {
+                position: absolute;
+                bottom: 20px;
+                right: 20px;
+                color: #00ff00;
+                font-family: "Courier New", "Monaco", "Lucida Console", monospace;
+                font-size: 24px;
+                text-shadow: 0 0 5px rgba(0, 255, 0, 0.5);
+                user-select: none;
+                pointer-events: none;
+            }
+
             #crosshair {
                 position: absolute;
                 top: 0;
@@ -154,6 +247,17 @@
     </head>
 
     <body>
+        <div class="custom-dropdown" id="mapSelector">
+            <div class="dropdown-selected">
+                <span class="dropdown-text">de_dust2</span>
+                <span class="dropdown-arrow">▼</span>
+            </div>
+            <div class="dropdown-options">
+                <div class="dropdown-option" data-value="de_dust2_new">de_dust2</div>
+                <div class="dropdown-option" data-value="de_train">de_train</div>
+                <div class="dropdown-option" data-value="cs_deagle5">cs_deagle5</div>
+            </div>
+        </div>
         <p id="fps"></p>
         <!--  -->
         <div id="loading">
@@ -161,6 +265,7 @@
             <img src="./assets/valveLoading.webp" alt="" id="loadingImg" />
         </div>
         <img id="crosshair" src="crosshair.png" alt="Crosshair" />
+        <div id="ammo-counter"></div>
         <audio autoplay>
             <source src="./assets/valveLoading.mp3" type="audio/mpeg" />
         </audio>

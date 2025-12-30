@@ -14,6 +14,8 @@ export class InputManager {
   boundOnPointerlockChange;
   boundOnPointerlockError;
   boundOnPointerlock;
+  boundOnWindowBlur;
+  boundOnWindowFocus;
   isLocked = false;
   lastLeftClick = /* @__PURE__ */ new Date();
   playerWrapper;
@@ -32,6 +34,8 @@ export class InputManager {
     this.boundOnPointerlockChange = (evt) => this.onPointerlockChange(evt);
     this.boundOnPointerlockError = (evt) => this.onPointerlockError(evt);
     this.boundOnPointerlock = (evt) => this.onLock();
+    this.boundOnWindowBlur = (evt) => this.onWindowBlur(evt);
+    this.boundOnWindowFocus = (evt) => this.onWindowFocus(evt);
     document.body.ownerDocument.addEventListener("keydown", this.boundOnKeyDown, false);
     document.body.ownerDocument.addEventListener("keyup", this.boundOnKeyUp, false);
     document.body.ownerDocument.addEventListener("mousedown", this.boundOnMouseDown, false);
@@ -40,6 +44,8 @@ export class InputManager {
     document.body.ownerDocument.addEventListener("pointerlockchange", this.boundOnPointerlockChange, false);
     document.body.ownerDocument.addEventListener("pointerlockerror", this.boundOnPointerlockError, false);
     document.body.ownerDocument.addEventListener("click", this.boundOnPointerlock, false);
+    window.addEventListener("blur", this.boundOnWindowBlur, false);
+    window.addEventListener("focus", this.boundOnWindowFocus, false);
   }
   onLock() {
     document.body.requestPointerLock();
@@ -87,18 +93,20 @@ export class InputManager {
       playerController.moveRight(speed, dt);
       playerRenderer?.handleMove(new Vector3D(1, 0, 0), dt);
     }
-    if (this.keys.get(Key.One)?.justReleased) {
-      const ak47 = Game.getInstance().globalLoadingManager.loadableMeshs.get("AK47");
-      if (ak47) playerRenderer?.setMesh(ak47.clone());
-    }
-    if (this.keys.get(Key.Two)?.justReleased) {
-      const usp = Game.getInstance().globalLoadingManager.loadableMeshs.get("Usp");
-      if (usp) playerRenderer?.setMesh(usp.clone());
-    }
-    if (this.keys.get(Key.Three)?.justReleased) {
-      const knife = Game.getInstance().globalLoadingManager.loadableMeshs.get("Knife");
-      if (knife) playerRenderer?.setMesh(knife.clone());
-    }
+    
+    // Weapon Switching via Player logic
+    const switchWeapon = (slot) => {
+        const weapon = this.playerWrapper.player.equipWeapon(slot);
+        if (weapon) {
+            const mesh = Game.getInstance().globalLoadingManager.loadableMeshs.get(weapon.meshName);
+            if (mesh) playerRenderer?.setMesh(mesh.clone());
+        }
+    };
+
+    if (this.keys.get(Key.One)?.justReleased) switchWeapon(1);
+    if (this.keys.get(Key.Two)?.justReleased) switchWeapon(2);
+    if (this.keys.get(Key.Three)?.justReleased) switchWeapon(3);
+
     if (this.keys.get(Key.Four)?.justReleased) {
       if (this.playerWrapper.switchToFpsView()) {
         this.playerWrapper.cameraManager = new FPSCameraManager(
@@ -110,7 +118,18 @@ export class InputManager {
       }
     }
     if (this.keys.get(Key.Five)?.justReleased) {
-      if (this.playerWrapper.switchToTpsView()) {
+      if (!this.playerWrapper.switchToTpsView()) {
+        // If already in TPS view (switchToTpsView returns false), switch back to FPS
+        if (this.playerWrapper.switchToFpsView()) {
+          this.playerWrapper.cameraManager = new FPSCameraManager(
+            this.playerWrapper.player,
+            this.playerWrapper.renderer.camera
+          );
+          Game.getInstance().renderer.setCamera(this.playerWrapper.cameraManager.camera);
+          this.playerWrapper.renderer?.setCameraManager(this.playerWrapper.cameraManager);
+        }
+      } else {
+        // Switched to TPS
         this.playerWrapper.cameraManager = new TPSCameraManager(
           this.playerWrapper.player,
           this.playerWrapper.renderer.camera
@@ -119,6 +138,16 @@ export class InputManager {
         this.playerWrapper.renderer?.setCameraManager(this.playerWrapper.cameraManager);
       }
     }
+    if (this.keys.get(Key.Six)?.justReleased) {
+        Game.getInstance().spawnDummy();
+    }
+    
+    // Debug Toggle (Key 7)
+    if (this.keys.get(Key.Seven)?.justReleased) { 
+        const game = Game.getInstance();
+        game.players.forEach(p => p.player.createDebugMesh());
+    }
+
     if (this.keys.get(Key.Use)?.justReleased) {
       const game = Game.getInstance();
       const playerWrapper2 = PlayerWrapper.default();
@@ -131,14 +160,22 @@ export class InputManager {
         game.setCurrentPlayer(playerWrapper2);
       });
     }
-    if (this.keys.get(Key.Left_Click)?.isPressed) {
+    
+    const currentWeapon = this.playerWrapper.player.currentWeapon;
+    const isAuto = currentWeapon.fireMode === 'auto';
+    const fireInput = isAuto ? this.keys.get(Key.Left_Click)?.isPressed : this.keys.get(Key.Left_Click)?.justPressed;
+
+    if (fireInput) {
       let hitScanResult = playerController.shoot();
       if (hitScanResult) {
         playerRenderer?.handleShoot(hitScanResult);
       }
     }
+    
     if (this.keys.get(Key.Reload)?.justReleased) {
-      playerRenderer?.handleReload();
+      if (this.playerWrapper.player.reload()) {
+          playerRenderer?.handleReload();
+      }
     }
     if (this.keys.get(Key.Right_Click)?.justReleased) {
       playerRenderer?.handleZoom();
@@ -152,6 +189,7 @@ export class InputManager {
     }
   }
   onKeyDown(event) {
+    if (event.key.toLowerCase() === "escape") this.clearAllMovementKeys();
     if (event.key.toLowerCase() === " ") this.keys.get(Key.Jump)?.setPressed(true);
     if (event.key.toLowerCase() === "z" || event.key.toLowerCase() === "w") this.keys.get(Key.Forward)?.setPressed(true);
     if (event.key.toLowerCase() === "q" || event.key.toLowerCase() === "a") this.keys.get(Key.Left)?.setPressed(true);
@@ -165,6 +203,8 @@ export class InputManager {
     if (event.key.toLowerCase() === '"' || event.key.toLowerCase() === "3") this.keys.get(Key.Three)?.setPressed(true);
     if (event.key.toLowerCase() === "'" || event.key.toLowerCase() === "4") this.keys.get(Key.Four)?.setPressed(true);
     if (event.key.toLowerCase() === "(" || event.key.toLowerCase() === "5") this.keys.get(Key.Five)?.setPressed(true);
+    if (event.key.toLowerCase() === "-" || event.key.toLowerCase() === "6") this.keys.get(Key.Six)?.setPressed(true);
+    if (event.key.toLowerCase() === "è" || event.key.toLowerCase() === "7") this.keys.get(Key.Seven)?.setPressed(true);
   }
   onKeyUp(event) {
     if (event.key.toLowerCase() === " ") this.keys.get(Key.Jump)?.onKeyUp();
@@ -180,6 +220,8 @@ export class InputManager {
     if (event.key.toLowerCase() === '"' || event.key.toLowerCase() === "3") this.keys.get(Key.Three)?.onKeyUp();
     if (event.key.toLowerCase() === "'" || event.key.toLowerCase() === "4") this.keys.get(Key.Four)?.onKeyUp();
     if (event.key.toLowerCase() === "(" || event.key.toLowerCase() === "5") this.keys.get(Key.Five)?.onKeyUp();
+    if (event.key.toLowerCase() === "-" || event.key.toLowerCase() === "6") this.keys.get(Key.Six)?.onKeyUp();
+    if (event.key.toLowerCase() === "è" || event.key.toLowerCase() === "7") this.keys.get(Key.Seven)?.onKeyUp();
   }
   clickedOnHud(event) {
     return event.target.nodeName !== "BODY";
@@ -196,5 +238,19 @@ export class InputManager {
   }
   setCurrentPlayer(playerWrapper) {
     this.playerWrapper = playerWrapper;
+  }
+  clearAllMovementKeys() {
+    this.keys.get(Key.Forward)?.onKeyUp();
+    this.keys.get(Key.Backward)?.onKeyUp();
+    this.keys.get(Key.Left)?.onKeyUp();
+    this.keys.get(Key.Right)?.onKeyUp();
+    this.keys.get(Key.Jump)?.onKeyUp();
+    this.keys.get(Key.Shift)?.onKeyUp();
+  }
+  onWindowBlur(evt) {
+    this.clearAllMovementKeys();
+  }
+  onWindowFocus(evt) {
+    // Optional: could add logic here if needed
   }
 }

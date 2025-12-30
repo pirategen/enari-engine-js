@@ -14,6 +14,8 @@ export var Key = /* @__PURE__ */ ((Key2) => {
   Key2["Three"] = "Three";
   Key2["Four"] = "Four";
   Key2["Five"] = "Five";
+  Key2["Six"] = "Six";
+  Key2["Seven"] = "Seven";
   return Key2;
 })(Key || {});
 export class KeyBinding {

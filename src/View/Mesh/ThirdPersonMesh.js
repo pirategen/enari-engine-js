@@ -14,13 +14,14 @@ export class ThirdPersonMesh extends LoadableMesh {
   };
   mixer;
   constructor() {
-    super("./assets/RobotExpressive.glb", "ThirdPersonMesh");
+    super("./assets/swat_anim.glb", "ThirdPersonMesh");
   }
   initAnimation() {
     this.mixer = new THREE.AnimationMixer(this.mesh);
     const animations = this.mesh.animations;
-    const numAnimations = animations.length;
-    console.log(animations);
+    if (animations) {
+        console.log("Loaded SWAT animations:", animations.map(a => a.name));
+    }
   }
   init() {
     super.init();
@@ -28,11 +29,20 @@ export class ThirdPersonMesh extends LoadableMesh {
     this.initAnimation();
   }
   initMesh() {
-    this.mesh.scale.set(0.6, 0.6, 0.6);
+    // Start with a standard scale estimate (often 1.0 or 0.01 depending on export)
+    // RobotExpressive was 0.6. GIGN was huge (required 0.015).
+    // Let's try 1.0 first, as many GLBs are exported in meters.
+    this.mesh.scale.set(2.25, 2.25, 2.25); 
+    
+    // Tag the root mesh
+    this.mesh.userData.isPlayer = true;
+    
     this.mesh.traverse((child) => {
       child.castShadow = true;
       child.receiveShadow = true;
       child.frustumCulled = false;
+      // Tag all children to ensure raycast detection works on any part
+      child.userData.isPlayer = true;
     });
   }
   async load() {
@@ -41,16 +51,37 @@ export class ThirdPersonMesh extends LoadableMesh {
   lastAnimName;
   playAnimation(anim, repeat = false) {
     const clip = THREE.AnimationClip.findByName(this.mesh.animations, anim);
+    if (!clip) {
+        console.warn(`Animation ${anim} not found`);
+        return;
+    }
+    
+    // Prevent restarting the same animation if it's already playing
+    if (this.lastAnimName === anim && this.mixer.existingAction(clip)?.isRunning()) return;
+
+    // Fade out previous action if it exists
+    if (this.lastAnimName && this.lastAnimName !== anim) {
+        const prevClip = THREE.AnimationClip.findByName(this.mesh.animations, this.lastAnimName);
+        if (prevClip) {
+            const prevAction = this.mixer.clipAction(prevClip);
+            prevAction.fadeOut(0.2);
+        }
+    }
+
     const action = this.mixer.clipAction(clip);
-    if (this.lastAnimName == anim && repeat) return;
     if (action) {
-      action.reset();
-      if (!repeat) {
-        action.setLoop(THREE.LoopOnce, 1);
-        action.clampWhenFinished = true;
-      }
-      this.lastAnimName = anim;
-      action.play();
+        action.reset();
+        action.fadeIn(0.2); // Smooth transition in
+        
+        if (!repeat) {
+            action.setLoop(THREE.LoopOnce, 1);
+            action.clampWhenFinished = true;
+        } else {
+            action.setLoop(THREE.LoopRepeat, Infinity);
+        }
+        
+        this.lastAnimName = anim;
+        action.play();
     }
   }
   update(dt) {
